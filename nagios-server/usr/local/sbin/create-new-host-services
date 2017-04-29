@@ -1,0 +1,83 @@
+#!/bin/bash
+# Created by zollak
+# Created on 2015.03.23
+# Last modify on 2015.03.23.
+# nagios-passive-safenet*.deb csomag kliens oldali telepiteset kovetoen, automatikus host felvetelet teszi lehetove a script
+# located in: /usr/local/sbin/create-new-host-services
+
+long=1000
+
+echo "Felvenni kivant host FQDN-je:"
+read h
+
+echo "h=$h"
+
+tail -n$long /var/log/nagios3/nagios.log | awk -F\' '{print $2,$4}' | grep -v channel|sort|uniq > /tmp/warninglist
+
+grep "$h" /tmp/warninglist > /tmp/filtered_list
+
+function create_service {
+awk '{print $1}' /tmp/filtered_list | while read line; 
+        do
+	if grep -Fq "$line" /etc/nagios3/objects/$h.cfg
+	then
+		echo "$line nevu service mar volt a $h hostnal, ezert nem vettem fel!";
+	else
+        	echo "define service{" >> /etc/nagios3/objects/$h.cfg;
+        	echo "        use                             generic-passive-service" >> /etc/nagios3/objects/$h.cfg;
+       		echo "        host_name                       $h" >> /etc/nagios3/objects/$h.cfg;
+       		echo "        service_description             $line" >> /etc/nagios3/objects/$h.cfg;
+        	echo "        check_command                   check_nrpe!$line" >> /etc/nagios3/objects/$h.cfg;
+        	echo "        }" >> /etc/nagios3/objects/$h.cfg;
+        	echo " " >> /etc/nagios3/objects/$h.cfg;
+		
+		echo "A kovetkezo service-t letrehoztam: $line"
+	fi
+        done 
+}
+
+function create_host {
+echo "define host{" > /etc/nagios3/objects/$h.cfg;
+echo "        use                     generic-host" >> /etc/nagios3/objects/$h.cfg;
+echo "        host_name               $h" >> /etc/nagios3/objects/$h.cfg;
+echo "        }" >> /etc/nagios3/objects/$h.cfg;
+echo " " >> /etc/nagios3/objects/$h.cfg;
+}
+
+# ha letezik a megadott host a nagiosban, akkor csak az ujonnan talalt service-ket fuzi hozza
+if [ -f /etc/nagios3/objects/$h.cfg ];
+then
+	create_service;
+	echo " "
+	echo 'nagios3 -v /etc/nagios3/nagios.cfg | grep -A1 "Total Warnings"'
+	nagios3 -v /etc/nagios3/nagios.cfg | grep -A3 "Warning"
+	echo "ha itt nem latsz hibat, inditsd ujra a nagios-t: service nagios3 restart"
+	echo "Hiba eseten a kovetkezo logokat erdemes megnezni:"
+	echo "/var/log/nagios3/nagios.log"
+	echo "/var/log/syslog"
+else
+	# ha nem letezik a megadott host, es nem nulla a szurt lista file, akkor a hostot ES a service-ket is letrehozza
+	if [ -s /tmp/filtered_list ];
+	then
+		create_host;
+		create_service;
+		echo " "
+		echo 'nagios3 -v /etc/nagios3/nagios.cfg | grep -A1 "Total Warnings"'
+        	nagios3 -v /etc/nagios3/nagios.cfg | grep -A3 "Warning"
+        	echo "ha itt nem latsz hibat, inditsd ujra a nagios-t: service nagios3 restart"
+		echo "Hiba eseten a kovetkezo logokat erdemes megnezni:"
+	        echo "/var/log/nagios3/nagios.log"
+        	echo "/var/log/syslog"
+		echo " "
+	       	echo "Letrehoztam a hostot: /etc/nagios3/objects/$h.cfg"
+	else
+	# ha nem letezik a megadott host, es nulla a szurt lista file, akkor az alabbi okok lehetnek:
+	echo "Nincs $h nevu host a /var/log/nagios3/nagios.log utolso $long soraban!";
+	echo "1. Vagy varj meg es probaljad meg kesobb!";
+	echo "2. Noveljed meg a long valtozo erteket a scriptben!";
+	echo "3. Adj meg olyan host nevet, ami eljut a /var/log/nagios3/nagios.log fajba!";
+	fi
+fi
+
+rm /tmp/warninglist
+rm /tmp/filtered_list
