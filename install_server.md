@@ -266,6 +266,54 @@ vi /etc/cron.daily/00logwatch
 
 ## NAGIOS
 
+apt-get install nagios3 nagios-nrpe-plugin
+
+NAGIOS apache: nagiosadmin
+pwd: KeePass
+
+Create objects dir
+mkdir /etc/nagios3/objects
+
+Create own host as /etc/nagios3/objects/[nagios.example.com.cfg](nagios.example.com.cfg)
+
+vi /etc/nagios3/objects/nagios.example.com.cfg
+
+nagios3 -v /etc/nagios3/nagios.cfg
+/etc/init.d/nagios3 restart
+
+
+vi /etc/nagios3/nagios.cfg
+cfg_dir=/etc/nagios3/objects
+check_external_commands=1
+
+vi /etc/apache2/ports.conf
+NameVirtualHost *:40000
+Listen 40000
+
+/etc/init.d/apache2 restart
+
+http://107.170.80.72:40000/nagios3/
+nagiosadmin
+KeePass
+
+
+
+
+dpkg --get-selections | grep nagios
+nagios-images                                   install
+nagios-nrpe-plugin                              install
+nagios-passive-safenet                          install
+nagios-plugins                                  install
+nagios-plugins-basic                            install
+nagios-plugins-common                           install
+nagios-plugins-standard                         install
+nagios3                                         install
+nagios3-cgi                                     install
+nagios3-common                                  install
+nagios3-core                                    install
+
+
+
 
 Nagiosban be kell állítani,h kinek megy az összes értesítés:
 
@@ -279,6 +327,12 @@ admin_email=admin@example.com
 
 /etc/init.d/nagios3 restart
 
+
+
+Send this host info to another nagios server (if we have secondary nagios server)
+apt-get install nagios-nrpe-server
+
+...
 
 ## Security
 
