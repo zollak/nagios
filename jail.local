@@ -1,0 +1,46 @@
+# The DEFAULT allows a global definition of the options. They can be overridden
+# in each jail afterwards.
+[DEFAULT]
+ignoreip = 127.0.0.1/8
+backend = polling
+destemail = admin@example.com
+action = %(action_mwl)s
+protocol = tcp
+bantime  = -1
+banaction = iptables-multiport-permanent
+maxretry = 3
+
+[my-ssh]
+enabled  = true
+port     = 15951
+filter   = sshd
+logpath  = /var/log/auth.log
+maxretry = 3
+
+[my-ssh-ddos]
+enabled  = true
+port     = 15951
+filter   = sshd-ddos
+logpath  = /var/log/auth.log
+maxretry = 4
+
+[my-apache]
+enabled  = true
+port     = 40000,40004
+filter   = apache-auth
+logpath  = /var/log/apache*/*error.log
+maxretry = 6
+
+[my-apache-noscript]
+enabled  = true
+port     = http,https
+filter   = apache-noscript
+logpath  = /var/log/apache*/*error.log
+maxretry = 6
+
+[my-apache-overflows]
+enabled  = true
+port     = http,https
+filter   = apache-overflows
+logpath  = /var/log/apache*/*error.log
+maxretry = 2
