@@ -1,0 +1,73 @@
+MAILTO=""
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+
+###check_procs###
+* * * * * root nagpassive check_procs '-c 1: -C apache2' Apache2_Process
+
+###check_procs###
+* * * * * root nagpassive check_procs '-c 1: -C sshd' Sshd_Process
+
+###check_procs###
+* * * * * root nagpassive check_procs '-c 1: -C mysqld' Mysqld_Process
+
+###check_procs###
+* * * * * root nagpassive check_procs '-c 1: -C rsyslogd' Rsyslogd_Process
+
+###check_procs###
+* * * * * root nagpassive check_procs '-c 1: -C memcached' Memcached_Process
+
+###check_smtp###
+* * * * * root nagpassive check_smtp '-H 127.0.0.1' SMTP
+
+###check_load###
+* * * * * root nagpassive check_load '-w 3,3,3 -c 4,4,4' Current_Load
+
+###check_procs###
+* * * * * root nagpassive check_procs '-w 11 -c 34 -s Z' Zombie_Process
+
+###check_procs###
+#* * * * * root nagpassive check_procs '-w 171 -c 228' Running_Process
+
+###check_mailq###
+* * * * * root nagpassive check_mailq '-w 15 -c 30' Mail_Queue
+
+###check_ntp_time###
+#* * * * * root nagpassive check_ntp_time '-H europe.pool.ntp.org -w 10 -c 20' NTP_Time
+
+###check_uptime###
+* * * * * root nagpassive check_uptime '-c 15 -w 25' Uptime
+
+###check_iowait###
+* * * * * root nagpassive check_iowait '-c 80 -w 70' IOwait
+
+###check_swap_activity###
+#* * * * * root nagpassive check_swap_activity '-d 5 -c 8192 -w 4096' Swap_activity
+
+###check_ro-mounts###
+* * * * * root nagpassive check_ro-mounts '' RO_Mounts
+
+###check_disk###
+#* * * * * root nagpassive check_disk '-l -u GB -X tmpfs -X devtmpfs -w 2% -c 1% -A' Disk_Space
+
+###check_procs###
+* * * * * root nagpassive check_procs '-c 1: -a postfix' Postfix_Process
+
+############################
+#manual
+* * * * * root nagpassive check_users '-w 0 -c 3' Current_Users
+* * * * * root nagpassive check_dns '-H dev.classbox.me' DNS_Resolution
+*/5 * * * * root nagpassive check_apt ' ' Packages
+* * * * * root nagpassive check_mysql '-uroot -f /root/.my.cnf' MySQL
+* * * * * root nagpassive check_mem.pl '-u -C -w90 -c95' Memory
+* * * * * root nagpassive check_http '-H localhost -p 80' HTTP
+* * * * * root nagpassive check_http '-S -H localhost -p 443' HTTPS
+* * * * * root nagpassive check_ssh '-p 11111 -H localhost' SSH
+###check_ntp_time###
+* * * * * root nagpassive check_ntp_time '-H 87.229.95.254 -w 10 -c 20' NTP_Time
+# Disks_Space Disk_Space and escape chars: \
+* * * * * root nagpassive check_disk '-l -u GB -X tmpfs -X devtmpfs -w 2\% -c 1\% -A' Disks_Space
+###check_procs###
+* * * * * root nagpassive check_procs '-w 235 -c 255' Running_Process
+###check_swap_activity###
+* * * * * root nagpassive check_swap_activity '-d 5 -c 1536 -w 1024' Swap_activity
