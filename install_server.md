@@ -19,6 +19,29 @@ iface eth0 inet static
         gateway 107.170.80.1
         dns-nameservers 8.8.4.4 8.8.8.8 209.244.0.3
 ```
+### Disable IPv6
+
+```
+sudo echo net.ipv6.conf.all.disable_ipv6=1 > /etc/sysctl.d/disableipv6.conf
+sudo reboot
+```
+
+## DNS
+```bash
+cat /etc/hosts
+```
+```
+127.0.0.1        localhost
+107.170.80.72    nagios.example.com
+```
+
+## Hostname, FQDN
+```bash
+cat /etc/hostname
+```
+```
+nagios.example.com
+```
 
 ## Set users
 
@@ -104,13 +127,6 @@ vi ~/.bashrc
 sudo dpkg-reconfigure debconf
 ```
 Dialog/low
-
-## Disable IPv6
-
-```
-sudo echo net.ipv6.conf.all.disable_ipv6=1 > /etc/sysctl.d/disableipv6.conf
-sudo reboot
-```
 
 ## Time zone
 
@@ -266,40 +282,91 @@ vi /etc/cron.daily/00logwatch
 
 ## NAGIOS
 
+```bash
 apt-get install nagios3 nagios-nrpe-plugin
+```
+Default web interface username: nagiosadmin
+A bit later we'll change it. No need to remember it.
 
-NAGIOS apache: nagiosadmin
-pwd: KeePass
-
-Create objects dir
+Create objects dir to store host's config file:
+```bash
 mkdir /etc/nagios3/objects
-
+```
 Create own host as /etc/nagios3/objects/[nagios.example.com.cfg](nagios.example.com.cfg)
 
 vi /etc/nagios3/objects/nagios.example.com.cfg
 
-nagios3 -v /etc/nagios3/nagios.cfg
-/etc/init.d/nagios3 restart
-
+Modify Nagios server main config file /etc/nagios3/[nagios.cfg](nagios.cfg)
 
 vi /etc/nagios3/nagios.cfg
-cfg_dir=/etc/nagios3/objects
-check_external_commands=1
+
+Create Apache VHOST file: /etc/apache2/sites-available/[ssl.conf](ssl.conf)
+
+vi /etc/apache2/sites-available/ssl.conf
+
+Set required module and VHOST's:
+
+a2enmod ssl
+a2ensite ssl
+a2dissite 000-default
+
+### Set SSL cert
+
+TODO
+SafeNet  root@ns2:~# mv /home/zollak/ispserver.crt /etc/ssl/ispserver.crt
+SafeNet  root@ns2:~# mv /home/zollak/ispserver.key /etc/ssl/ispserver.key
+SafeNet  root@ns2:~# mv /home/zollak/startssl.chain.class2.server.crt /etc/ssl/startssl.chain.class2.server.crt
+SafeNet  root@ns2:~# chown www-data:www-data /etc/ssl/ispserver.crt
+SafeNet  root@ns2:~# chown www-data:www-data /etc/ssl/ispserver.key
+SafeNet  root@ns2:~# chown www-data:www-data /etc/ssl/startssl.chain.class2.server.crt
+
+
+We don't need to listen on port 443, that's why modify /etc/apache2/[ports.conf](ports.conf)
 
 vi /etc/apache2/ports.conf
-NameVirtualHost *:40000
-Listen 40000
 
-/etc/init.d/apache2 restart
+Create own user to nagios web interface:
 
-http://107.170.80.72:40000/nagios3/
-nagiosadmin
-KeePass
+htpasswd -cs /etc/nagios3/htpasswd.users zollak
+New password: KeePass
+
+Delete default user from web interface:
+htpasswd -D /etc/nagios3/htpasswd.users nagiosadmin
+
+You also need to change the username in the /etc/nagios3/[cgi.cfg](cgi.cfg) file.
+
+vi /etc/nagios3/cgi.cfg
+
+Allow Externel commands in Web interface:
+
+sudo /etc/init.d/nagios3 stop
+sudo dpkg-statoverride --update --add nagios www-data 2710 /var/lib/nagios3/rw
+sudo dpkg-statoverride --update --add nagios nagios 751 /var/lib/nagios3
+
+Modify /etc/nagios-plugins/config/[check_nrpe.cfg](check_nrpe.cfg) for common ports
+
+vi /etc/nagios-plugins/config/check_nrpe.cfg
 
 
+Modify /etc/nagios3/[commands.cfg](commands.cfg) - Mibipush notifications
 
+vi /etc/nagios3/commands.cfg
+
+Set notifications. Modify /etc/nagios3/conf.d/[contacts_nagios2.cfg](contacts_nagios2.cfg)
+
+vi /etc/nagios3/conf.d/contacts_nagios2.cfg
+
+
+sudo vi /etc/nagios3/conf.d/hostgroups_nagios2.cfg
+sudo vi  /etc/nagios3/conf.d/localhost_nagios2.cfg
+sudo vi  /etc/nagios3/conf.d/generic-service_nagios2.cfg
+sudo vi /etc/nagios3/conf.d/services_nagios2.cfg
+
+
+### Checks
 
 dpkg --get-selections | grep nagios
+
 nagios-images                                   install
 nagios-nrpe-plugin                              install
 nagios-passive-safenet                          install
@@ -312,27 +379,25 @@ nagios3-cgi                                     install
 nagios3-common                                  install
 nagios3-core                                    install
 
+nagios3 -v /etc/nagios3/nagios.cfg
 
-
-
-Nagiosban be kell állítani,h kinek megy az összes értesítés:
-
-Modify /etc/nagios3/conf.d/[contacts_nagios2.cfg](contacts_nagios2.cfg)
-
-vi /etc/nagios3/conf.d/contacts_nagios2.cfg
-
-vi /etc/nagios3/nagios.cfg
-#admin_email=root@localhost
-admin_email=admin@example.com
-
+### Restart service
 /etc/init.d/nagios3 restart
+/etc/init.d/apache2 restart
 
+Login to browser:
 
+URL: http://107.170.80.72:40000/nagios3/
 
+Username: zollak
+
+Password: KeePass
+
+### Set NRPE
 Send this host info to another nagios server (if we have secondary nagios server)
+
 apt-get install nagios-nrpe-server
 
-...
 
 ## Security
 
