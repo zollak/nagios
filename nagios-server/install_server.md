@@ -216,28 +216,6 @@ Modify Nagios server main config file /etc/nagios3/[nagios.cfg](etc/nagios3/nagi
 ```bash
 sudo vi /etc/nagios3/nagios.cfg
 ```
-Create Apache VHOST file: /etc/apache2/sites-available/[ssl.conf](etc/apache2/sites-available/ssl.conf)
-```bash
-sudo vi /etc/apache2/sites-available/ssl.conf
-```
-Set required module and VHOST's:
-```bash
-sudo a2enmod ssl
-sudo a2ensite ssl
-sudo a2dissite 000-default
-```
-
-SSL cert rights in /etc/ssl
-```
--rw-r----- 1 root www-data 2.2K Feb 19 20:45 sn.crt
--rw-r----- 1 root www-data 3.2K Feb 19 20:32 sn.key
--rw-r----- 1 root www-data 4.8K Feb 19 21:02 startssl.CA.chain.class2.crt
-```
-
-We don't need to listen on port 443, that's why modify /etc/apache2/[ports.conf](etc/apache2/ports.conf)
-```bash
-sudo vi /etc/apache2/ports.conf
-```
 Create own user to nagios web interface:
 ```bash
 sudo htpasswd -cs /etc/nagios3/htpasswd.users zollak
@@ -274,6 +252,36 @@ sudo vi /etc/nagios3/conf.d/hostgroups_nagios2.cfg
 sudo vi  /etc/nagios3/conf.d/localhost_nagios2.cfg
 sudo vi  /etc/nagios3/conf.d/generic-service_nagios2.cfg
 sudo vi /etc/nagios3/conf.d/services_nagios2.cfg
+```
+
+### Apache settings
+
+Create Apache VHOST file: /etc/apache2/sites-available/[ssl.conf](etc/apache2/sites-available/ssl.conf)
+```bash
+sudo vi /etc/apache2/sites-available/ssl.conf
+```
+Set required module and VHOST's:
+```bash
+sudo a2enmod ssl
+sudo a2ensite ssl
+sudo a2dissite 000-default
+```
+SSL cert rights in /etc/ssl
+```
+-rw-r----- 1 root www-data 2.2K Feb 19 20:45 sn.crt
+-rw-r----- 1 root www-data 3.2K Feb 19 20:32 sn.key
+-rw-r----- 1 root www-data 4.8K Feb 19 21:02 startssl.CA.chain.class2.crt
+```
+We don't need to listen on port 443, that's why modify /etc/apache2/[ports.conf](etc/apache2/ports.conf)
+```bash
+sudo vi /etc/apache2/ports.conf
+```
+Nagios config symlink in apache:
+```
+ls -la /etc/apache2/conf-available/nagios3.conf
+lrwxrwxrwx 1 root root 26 Mar 31 22:07 apache2/conf-available/nagios3.conf -> ../../nagios3/apache2.conf
+ls -la /etc/apache2/conf-enabled/nagios3.conf
+lrwxrwxrwx 1 root root 30 Feb 21  2016 apache2/conf-enabled/nagios3.conf -> ../conf-available/nagios3.conf
 ```
 
 ### Checks
@@ -424,13 +432,27 @@ vi /etc/cron.daily/00logwatch
 
 ### Apache signature
 
-vi /etc/apache2/apache2.conf
+Modify /etc/apache2/conf-available/[security.conf](etc/apache2/conf-available/security.conf)
 
-TraceEnable off
+vi /etc/apache2/conf-available/security.conf
+e2enconf security
+
+```
 ServerTokens Prod
-ServerSignature off
-
-/etc/init.d/apache2 restart
+ServerSignature Off
+TraceEnable Off
+Header set X-Content-Type-Options: "nosniff"
+Header set X-Frame-Options: "sameorigin"
+Header edit Set-Cookie ^(.*)$ $1;HttpOnly;Secure
+SSLProtocol all -SSLv2 -SSLv3
+SSLCipherSuite "ECDH+AESGCM:DH+AESGCM:ECDH+AES256:DH+AES256:ECDH+AES128:DH+AES:RSA+AESGCM:RSA+AES::!ECDHE-RSA-AES256-SHA384:!DHE-RSA-AES256-SHA256:!AES256-SHA256:!ECDHE-RSA-AES128-SHA256:!DHE-RSA-AES128-SHA256:!AES128-SHA256:!aNULL:!MD5:!DSS:-SSLv3:-SSLv2"
+SSLHonorCipherOrder on
+SSLCompression off
+SSLUseStapling on
+SSLStaplingResponderTimeout 5
+SSLStaplingReturnResponderErrors off
+SSLStaplingCache shmcb:/var/run/ocsp(128000)
+```
 
 ### PHP signature
 
