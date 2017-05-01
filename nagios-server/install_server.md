@@ -43,6 +43,60 @@ cat /etc/hostname
 ```
 nagios.example.com
 ```
+## Add swap to VPS
+
+Normaly the VPS has not swap! It cause some problem, so we need to set...
+
+> https://www.digitalocean.com/community/tutorials/how-to-add-swap-on-ubuntu-14-04
+
+```
+cat /proc/partitions
+major minor  #blocks  name
+ 253        0   20971520 vda
+  11        0    1048575 sr0
+
+fallocate -l 512M /swapfile
+ls -lh /swapfile
+-rw-r--r-- 1 root root 512M Jun 10 08:52 /swapfile
+chmod 600 /swapfile
+ls -lh /swapfile
+-rw------- 1 root root 512M Jun 10 08:52 /swapfile
+mkswap /swapfile
+Setting up swapspace version 1, size = 524284 KiB
+no label, UUID=15e6102a-8945-4bea-a3d7-fa75001b4895
+swapon /swapfile
+swapon -s
+Filename                                Type            Size    Used    Priority
+/swapfile                               file            524284  0       -1
+free -m
+             total       used       free     shared    buffers     cached
+Mem:           490        450         40          0         90        106
+-/+ buffers/cache:        253        237
+Swap:          511          0        511
+vi /etc/fstab
+# <file system> <mount point>   <type>  <options>       <dump>  <pass>
+proc                                            /proc   proc    nodev,noexec,nosuid             0       0
+# / was on /dev/vda1 during installation
+UUID=b96601ba-7d51-4c5f-bfe2-63815708aabd       /       ext4    noatime,errors=remount-ro       0       1
+UUID=15e6102a-8945-4bea-a3d7-fa75001b4895       none    swap    sw                              0       0
+
+cat /proc/sys/vm/swappiness
+60
+sysctl vm.swappiness=10
+vm.swappiness = 10
+echo "vm.swappiness=10" >> /etc/sysctl.conf
+cat /etc/sysctl.conf |grep vm.swappiness
+vm.swappiness=10
+cat /proc/sys/vm/vfs_cache_pressure
+100
+sysctl vm.vfs_cache_pressure=50
+vm.vfs_cache_pressure = 50
+cat /proc/sys/vm/vfs_cache_pressure
+50
+echo "vm.vfs_cache_pressure = 50" >> /etc/sysctl.conf
+cat /etc/sysctl.conf |grep vm.vfs
+vm.vfs_cache_pressure = 50
+```
 
 ## Set users
 
@@ -286,26 +340,48 @@ lrwxrwxrwx 1 root root 30 Feb 21  2016 apache2/conf-enabled/nagios3.conf -> ../c
 
 ### Checks
 ```bash
-sudo dpkg --get-selections | grep nagios
+sudo dpkg -l | grep nagios
 ```
 ```
-nagios-images                                   install
-nagios-nrpe-plugin                              install
-nagios-passive-safenet                          install
-nagios-plugins                                  install
-nagios-plugins-basic                            install
-nagios-plugins-common                           install
-nagios-plugins-standard                         install
-nagios3                                         install
-nagios3-cgi                                     install
-nagios3-common                                  install
-nagios3-core                                    install
+ii  nagios-images                        0.8                                        all          Collection of images and icons for the nagios system
+ii  nagios-nrpe-plugin                   2.15-0ubuntu1                              amd64        Nagios Remote Plugin Executor Plugin
+ii  nagios-passive-safenet               5.0                                        all          Custom passive check solution for SafeNet
+ii  nagios-plugins                       1.5-3ubuntu1                               all          Plugins for nagios compatible monitoring systems (metapackage)
+ii  nagios-plugins-basic                 1.5-3ubuntu1                               amd64        Plugins for nagios compatible monitoring systems
+ii  nagios-plugins-common                1.5-3ubuntu1                               amd64        Common files for plugins for nagios compatible monitoring
+ii  nagios-plugins-standard              1.5-3ubuntu1                               amd64        Plugins for nagios compatible monitoring systems
+ii  nagios3                              3.5.1-1ubuntu1.1                           amd64        host/service/network monitoring and management system
+ii  nagios3-cgi                          3.5.1-1ubuntu1.1                           amd64        cgi files for nagios3
+ii  nagios3-common                       3.5.1-1ubuntu1.1                           all          support files for nagios3
+ii  nagios3-core                         3.5.1-1ubuntu1.1                           amd64        host/service/network monitoring and management system core files
 ```
 ```bash
 nagios3 -v /etc/nagios3/nagios.cfg
 ```
+```bash
+apache2ctl -S
+```
+```
+VirtualHost configuration:
+*:40004                nagios.example.com (/etc/apache2/sites-enabled/ssl.conf:4)
+ServerRoot: "/etc/apache2"
+Main DocumentRoot: "/var/www"
+Main ErrorLog: "/var/log/apache2/error.log"
+Mutex mpm-accept: using_defaults
+Mutex watchdog-callback: using_defaults
+Mutex rewrite-map: using_defaults
+Mutex ssl-stapling: using_defaults
+Mutex ssl-cache: using_defaults
+Mutex default: dir="/var/lock/apache2" mechanism=fcntl
+PidFile: "/var/run/apache2/apache2.pid"
+Define: DUMP_VHOSTS
+Define: DUMP_RUN_CFG
+Define: ENABLE_USR_LIB_CGI_BIN
+User: name="www-data" id=33
+Group: name="www-data" id=33
+```
 
-### Restart service
+### Restart services
 ```bash
 /etc/init.d/nagios3 restart
 /etc/init.d/apache2 restart
@@ -319,6 +395,17 @@ Username: zollak
 Password: KeePass
 
 ### Set passive check
+TODO
+
+Create own script /usr/local/sbin/[create-new-host-services](usr/local/sbin/create-new-host-services)
+
+vi /usr/local/sbin/create-new-host-services
+chmod +x /usr/local/sbin/create-new-host-services
+ echo $PATH
+/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin
+
+need to contains /usr/local/sbin
+
 
 sudo dpkg -i nagios-passive-safenet_3.8_amd64.deb
 sudo vi /etc/cron.d/passive-check-ssh-port
@@ -430,12 +517,14 @@ TODO
 vi /etc/cron.daily/00logwatch
 ```
 
-### Apache signature
+### Apache security settings
 
 Modify /etc/apache2/conf-available/[security.conf](etc/apache2/conf-available/security.conf)
 
+```bash
 vi /etc/apache2/conf-available/security.conf
 e2enconf security
+```
 
 ```
 ServerTokens Prod
@@ -462,30 +551,3 @@ vi /etc/php5/cli/php.ini
 expose_php = Off
 
 /etc/init.d/apache2 restart
-
-### Apache SSL
-
-```bash
-apache2ctl -S
-```
-```
-VirtualHost configuration:
-*:40004                nagios.example.com (/etc/apache2/sites-enabled/ssl.conf:4)
-ServerRoot: "/etc/apache2"
-Main DocumentRoot: "/var/www"
-Main ErrorLog: "/var/log/apache2/error.log"
-Mutex mpm-accept: using_defaults
-Mutex watchdog-callback: using_defaults
-Mutex rewrite-map: using_defaults
-Mutex ssl-stapling: using_defaults
-Mutex ssl-cache: using_defaults
-Mutex default: dir="/var/lock/apache2" mechanism=fcntl
-PidFile: "/var/run/apache2/apache2.pid"
-Define: DUMP_VHOSTS
-Define: DUMP_RUN_CFG
-Define: ENABLE_USR_LIB_CGI_BIN
-User: name="www-data" id=33
-Group: name="www-data" id=33
-```
-
-
