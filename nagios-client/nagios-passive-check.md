@@ -108,5 +108,40 @@ nagios-passive-check/
 ## Rebuild DEB file from source:
 
 ```
-dpkg-deb --build nagios-passive-check/ nagios-passive-check_2.4_all.deb
+$ dpkg-deb --build nagios-passive-check/ nagios-passive-check_2.4_all.deb
+```
+
+## Edit services manually in /etc/cron.d/[nagios-pc](nagios-pc)
+
+```
+###check_procs###
+#* * * * * root nagpassive check_procs '-w 171 -c 228' Running_Process
+
+###check_ntp_time###
+#* * * * * root nagpassive check_ntp_time '-H europe.pool.ntp.org -w 10 -c 20' NTP_Time
+
+###check_swap_activity###
+#* * * * * root nagpassive check_swap_activity '-d 5 -c 8192 -w 4096' Swap_activity
+
+###check_disk###
+#* * * * * root nagpassive check_disk '-l -u GB -X tmpfs -X devtmpfs -w 2% -c 1% -A' Disk_Space
+
+############################
+#manual
+* * * * * root nagpassive check_users '-w 0 -c 3' Current_Users
+* * * * * root nagpassive check_dns '-H dev.classbox.me' DNS_Resolution
+*/5 * * * * root nagpassive check_apt ' ' Packages
+* * * * * root nagpassive check_mysql '-uroot -f /root/.my.cnf' MySQL
+* * * * * root nagpassive check_mem.pl '-u -C -w90 -c95' Memory
+* * * * * root nagpassive check_http '-H localhost -p 80' HTTP
+* * * * * root nagpassive check_http '-S -H localhost -p 443' HTTPS
+* * * * * root nagpassive check_ssh '-p 11111 -H localhost' SSH
+###check_ntp_time###
+* * * * * root nagpassive check_ntp_time '-H 87.229.95.254 -w 10 -c 20' NTP_Time
+# Disks_Space Disk_Space and escape chars: \
+* * * * * root nagpassive check_disk '-l -u GB -X tmpfs -X devtmpfs -w 2\% -c 1\% -A' Disks_Space
+###check_procs###
+* * * * * root nagpassive check_procs '-w 235 -c 255' Running_Process
+###check_swap_activity###
+* * * * * root nagpassive check_swap_activity '-d 5 -c 1536 -w 1024' Swap_activity
 ```
