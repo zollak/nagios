@@ -1,0 +1,72 @@
+nagios-passive-safenet (5.0) all; urgency=high
+
+  * all architectura support
+  * passive-check-nagios3 changed
+  * default passive-check-swap is disabled
+  * new default check: passive-check-swap-activity
+  * cahngin upgrade method
+	+create temp dir (/tmp/nsca-cron)
+	+persist enabled check fine tune params settings
+
+ -- zollak <info@safenet.hu>  Sun, 21 Apr 2015 06:55:59 +0200
+
+nagios-passive-safenet (4.1) amd64; urgency=low
+
+  * passive-check-uptime canged
+  * new check: passive-check-users-2.disabled
+  * modified passive-check-users-1 to passive-check-users-0
+
+ -- zollak <info@safenet.hu>  Tue, 14 Apr 2015 10:53:56 +0200
+
+nagios-passive-safenet (4.0) amd64; urgency=low
+
+  * passive-check-nfs-server changed
+  * check_nfs_health.sh cahnged (missing /sbin PATH environment from script)
+  * new cron: passive-check-https-Proxmox
+
+ -- zollak <info@safenet.hu>  Sat, 29 Mar 2015 07:41:10 +0100
+
+nagios-passive-safenet (3.9) amd64; urgency=low
+
+  * passive-check-mysql-running changed
+
+ -- zollak <info@safenet.hu>  Sat, 28 Mar 2015 23:04:12 +0100
+
+nagios-passive-safenet (3.8) amd64; urgency=medium
+
+  * passive-check-zimbra-mailq changed
+  * passive-check-zimbra-lmtp changed
+  * new cron and check: passive-check-rkhunter, check_rkhunter
+  * raid,updates 5 minutes check, rkhunter 1 day check, others 1 mins check
+ 
+
+ -- zollak <info@safenet.hu>  Sat, 28 Mar 2015 07:04:32 +0100
+
+nagios-passive-safenet (3.7) amd64; urgency=low
+
+  * New cron: passive-check-mailq-sendmail
+  * Repair cron: passive-check-named 
+
+ -- zollak <info@safenet.hu>  Tue, 24 Mar 2015 08:05:07 +0100
+
+nagios-passive-safenet (3.6) amd64; urgency=low
+
+  * Updated /etc/cron.d/ files (add 18 new crons, change cron names etc.)
+
+ -- zollak <info@safenet.hu>  Mon, 23 Mar 2015 22:27:15 +0100
+
+nagios-passive-safenet (3.5) amd64; urgency=medium
+
+  * Updated n2enablecheck, n2disablecheck
+    +the above commands now have new parameters:
+     --list,--help,--all,--version,-v
+    +if a check already has the state indicated by command name
+     the command no longer displays a not found message.
+
+  * Config files are no longer over written.
+
+  * Passive check disabled/enabled state is now rememberd on package update.
+
+  * Checks no longer send message to root
+
+ --  Sun, 22 Mar 2015 08:10:53 +0100

@@ -1,0 +1,13 @@
+Package: nagios-passive-safenet
+Version: 5.0
+Section: main
+Priority: optional
+Architecture: all
+Essential: no
+Depends: nagios-plugins, nagios-plugins-basic, nagios-plugins-standard, libmcrypt4
+Pre-Depends: perl 
+Recommends: bc, sysstat
+Suggests: docbook
+Maintainer: zollak <info@safenet.hu>
+Replaces: nsca-client
+Description: Custom passive check solution for SafeNet

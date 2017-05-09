@@ -1,0 +1,79 @@
+#!/bin/bash
+#original by enax
+#current made by cheese
+VERSION="2.0"
+. /etc/nsca/passive-checks.cfg
+
+function help {
+
+	echo "Usage: $0 CHECKNAME or use ALL parameter to enable all available checks"
+	echo "       or use LIST to show them"
+	exit 0
+}
+
+function list {
+
+	disabled_list=$(ls $passive_check_dir/|sed -n 's/.*passive-check-\([^ ]*\).disabled/\1/p')
+	enabled_list=$(ls $passive_check_dir/|grep passive-check|grep -v disabled|sed s/passive-check-//g)
+	echo "Available checks:"
+	echo ""
+	for i in $disabled_list
+	do
+		echo $i"	disabled"
+	done
+	echo ""
+	for i in $enabled_list
+	do
+		echo $i"	enabled"
+	done
+	exit 0
+}
+
+function enable_check {
+
+if [ -f "$passive_check_dir/passive-check-$1.disabled" ]
+then
+	mv $passive_check_dir/passive-check-$1.disabled $passive_check_dir/passive-check-$1
+	echo "$1 enabled."
+elif [ -f "$passive_check_dir/passive-check-$1" ]
+then
+        echo "$1 enabled."
+else
+	echo "Could not find $1 passive check!"
+fi
+}
+
+
+if [ `id -u` -ne 0 ]
+then
+    echo "Use as (root) or run with (sudo)"
+    exit 1
+fi
+
+if [ $# -eq 0 ] || [ $# -gt 1 ]
+then
+	help
+else
+
+    case "$1" in
+        list|LIST|--list)
+	    list
+	    ;;
+        all|ALL|--all)
+            disabled_list=$(ls $passive_check_dir/|grep passive-check|grep disabled|sed s/passive-check-//g|sed s/.disabled//g)
+            for i in $disabled_list
+            do
+                enable_check $i
+            done
+            ;;
+        help|--help)
+            help
+            ;;
+        version|--version|-v)
+            echo "$VERSION"
+            ;;
+        *)
+            enable_check $1
+            ;;
+    esac
+fi

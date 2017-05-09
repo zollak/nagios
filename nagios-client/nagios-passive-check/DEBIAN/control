@@ -1,0 +1,11 @@
+Package: nagios-passive-check
+Version: 2.3
+Section: main
+Priority: optional
+Architecture: all
+Essential: no
+Depends: nagios-plugins, nagios-plugins-basic, nagios-plugins-standard, nsca-client, bc, sysstat, ntp, ntpdate
+Suggests: docbook 
+Maintainer: zollak <info@safenet.hu>
+Replaces: nagios-passive-safenet
+Description: Passive checks solution for SafeNet IT

@@ -1,0 +1,41 @@
+#!/bin/bash
+
+iostat_bin="/usr/bin/iostat"
+
+IOWAIT=$($iostat_bin -x 3 3 | grep -A 1 'avg-cpu' | tail -n1 | awk '{print $4}')
+
+XIOWAIT=$(echo "$IOWAIT" | sed 's/\..*//ig')
+
+while getopts 'u:p:v:w:c:' OPTION
+do
+  case $OPTION in
+  w)    wflag=1
+        wval="$OPTARG"
+        ;;
+  c)    cflag=1
+        cval="$OPTARG"
+        ;;
+  ?)    echo Argument invalid
+        printusage
+        exit 3
+        ;;
+  esac
+done
+
+if [ ! -f $iostat_bin ]; then
+    echo "Iostat binary file not found!"
+    exit 3
+fi
+
+if [[ $XIOWAIT -ge $cval ]];
+then
+echo "CRITICAL - IO wait: $IOWAIT%"
+exit 2
+elif [[ $XIOWAIT -ge $wval ]];
+then
+echo "WARNING - IO wait: $IOWAIT%"
+exit 1
+fi
+
+echo "OK - IO wait: $IOWAIT%"
+

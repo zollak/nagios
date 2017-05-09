@@ -1,0 +1,25 @@
+#!/bin/bash
+
+case "$1" in
+    install)
+	service rsyslog status > /dev/null 2>&1
+	if [ $? -eq 0 ]; then
+		sed -i 's/\*\.\*;auth,authpriv\.none[[:space:]]*\/var\/log\/syslog/\*\.\*;auth,authpriv\.none,cron\.none   \/var\/log\/syslog/g' /etc/rsyslog.d/50-default.conf
+		sed -i 's/#cron\.\*/cron\.\*/g' /etc/rsyslog.d/50-default.conf
+		service rsyslog restart > /dev/null 2>&1
+	fi
+	service syslog-ng status > /dev/null 2>&1
+	if [ $? -eq 0 ]; then
+		sed -i 's/filter f_syslog3 { not facility(auth, authpriv, mail)/filter f_syslog3 { not facility(auth, authpriv, mail, cron)/g' /etc/syslog-ng/syslog-ng.conf
+		service syslog-ng restart > /dev/null 2>&1
+	fi
+        ;;
+
+    *)
+        echo "preinst called with unknown argument $1" >&2
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0

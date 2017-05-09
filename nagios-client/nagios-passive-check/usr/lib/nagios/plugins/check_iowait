@@ -1,0 +1,50 @@
+#!/bin/bash
+
+OK=0
+WARN=1
+CRIT=2
+
+function printusage {
+	echo "usage: $0 -w % -c %"
+	exit 2
+}
+
+if [ $# -eq 0 ]; then
+	printusage
+fi
+
+while getopts ":hw:c:" OPTION; do
+  case "${OPTION}" in
+  	w) warn=$OPTARG
+           ;;
+  	c) crit=$OPTARG
+           ;;
+	h) printusage
+	   ;;
+  	\?) echo "Invalid option: -$OPTARG" >&2
+    	    exit 2
+    	    ;;
+	:) echo "Option -$OPTARG requires an argument." >&2
+    	   exit 2
+	   ;;
+  esac
+done
+
+if [ $crit -le $warn ]; then
+	echo "Warn value need to be less than crit!"
+	exit 1
+fi
+
+iowait=$(sar 1 3|grep -i average|awk '{print $6}'|awk -F . '{print $1}')
+
+if [ $iowait -lt $warn ]; then
+	echo "$iowait%"
+	exit $OK
+elif [ $iowait -gt $warn ] && [ $iowait -le $crit ]; then
+	echo "$iowait%"
+	exit $WARN
+else
+	echo "$iowait%"
+	exit $CRIT
+fi
+

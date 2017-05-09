@@ -1,0 +1,7 @@
+#
+# cron-jobs for nagios passive checks
+#
+
+
+* * * * * root check_name="check_ssmtp";param="-H 127.0.0.1";send_name="SMTPs";if [ -f /usr/lib/nagios/plugins/$check_name ];then nagios_server_ip=$(awk -F "=" '$1=="nagios_server_ip"{print $2}' /etc/nsca/passive-checks.cfg);arch=$(uname -m);if [ "$arch" = "x86_64" ];then send_nsca="send_nsca_amd64";else send_nsca="send_nsca_i386";fi;check=$(/usr/lib/nagios/plugins/$check_name $param);code=$?;echo "$(hostname --fqdn);$send_name;$code;$check"|/usr/local/sbin/$send_nsca -d ";" -H $nagios_server_ip -c /etc/nsca/send_nsca.cfg; fi > /dev/null 2>&1
+

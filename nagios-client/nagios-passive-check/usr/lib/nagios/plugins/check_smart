@@ -1,0 +1,308 @@
+#!/bin/bash
+
+disks_path="/dev/disk/by-id/"
+devices_path="/dev"
+smartctl_bin="/usr/sbin/smartctl"
+megacli_bin="/usr/sbin/megacli"
+runlock="/run/lock/check_smart.lock"
+
+help() {
+
+cat << EOL
+
+usage: check_smart {noraid|softraid|megaraid}
+
+EOL
+exit 0
+
+}
+
+get_devices() {
+
+disks_by_id=$(ls -1 $disks_path|grep "^wwn-0x[0-9a-z]*$"|sed -e "s#\(.*\)#$disks_path\1#")
+disks=""
+
+for disk_by_id in $disks_by_id; do
+	disk=$(echo "$disk_by_id"|xargs readlink)
+	if [[ $disk =~ sr[0-9]* ]]; then
+		:
+	else
+	disk=${disk##*/}
+	disks=$disks$disk"\n"
+	fi
+done
+
+disks=${disks%*\\n}
+disks=$(echo -e "$disks")
+}
+
+show_smart_exit_code(){
+
+echo -n "SMART exit code: $smartctl_exit_code <br>"
+
+}
+
+show_condition() {
+
+echo -n "SSD $disk condition: $ssd_condition% <br>"
+
+}
+
+show_condition2() {
+
+echo -n "SSD $disk slot$1 condition: $ssd_condition% <br>"
+
+}
+
+show_TOTAL_KO2() {
+
+echo -n "RAID $disk slot$1 FAILING NOW, CHANGE IT AZONNAL!!!44negy <br>"
+
+}
+
+show_TOTAL_KO() {
+
+echo -n "RAID $disk FAILING NOW, CHANGE IT AZONNAL!!!44negy <br>"
+
+}
+
+show_smart_health() {
+
+echo -n "SMART Health Status on $disk: $smart_health <br>"
+
+}
+
+show_smart_health2() {
+
+echo -n "SMART Health Status on $disk slot$slot: $smart_health<br>"
+
+}
+
+show_smart_selftest(){
+
+echo -n "SMART self-test on $disk: $smart_selftest <br>"
+
+}
+
+show_smart_selftest2(){
+
+echo -n "SMART self-test on $disk slot$slot: $smart_selftest <br>"
+
+}
+
+remove_runlock(){
+
+	rm $runlock
+
+}
+
+set_exit() {
+
+if [ $exit_code -eq 2 ]; then
+	remove_runlock
+	exit 2
+elif [ $exit_code -eq 1 ]; then
+	remove_runlock
+	exit 1
+else
+	remove_runlock
+	exit 0
+fi
+
+}
+
+get_smartctl_values() {
+
+smartctl_values=$($smartctl_bin $1)
+smartctl_exit_code=$?
+if [ $(($smartctl_exit_code & 8)) -ne 0 ]; then
+        TOTAL_KO=1
+	GOT_TOTAL_KO=1
+fi
+
+}
+
+get_ssd_condition(){
+
+ssd_condition=$(echo "$smartctl_values"|grep "Media_Wearout_Indicator"|awk '{ print $4 }')
+
+}
+
+get_smart_health(){
+
+smart_health=$(echo "$smartctl_values"|grep "SMART Health Status"|awk -F : '{ print $2 }'|tr -d ' ')
+
+}
+
+get_smart_selftest(){
+
+smart_selftest=$(echo "$smartctl_values"|grep "SMART overall-health self-assessment test result"|awk -F : '{ print $2 }'|tr -d ' ')
+
+}
+
+noraid() {
+
+get_devices
+
+exit_code=0
+TOTAL_KO=0
+GOT_TOTAL_KO=0
+
+for disk in $disks; do
+	get_smartctl_values "-a $devices_path/$disk"
+
+	if [ $TOTAL_KO -eq 0 ]; then
+		get_ssd_condition
+		if [ "$ssd_condition" != '' ]; then
+			if [ $ssd_condition -le 30 ]; then
+				show_condition
+				exit_code=2
+			elif [ $ssd_condition -le 70 ]; then
+				show_condition
+
+				if [ $exit_code -le 2 ]; then
+					exit_code=1
+				fi
+			else
+				show_condition
+			fi
+		fi
+		get_smart_health
+		if [ "$smart_health" == "OK" ]; then
+			show_smart_health
+		elif [ "$smart_health" != "" ]; then
+			show_smart_health
+			exit_code=1
+		fi
+		get_smart_selftest
+		if [ "$smart_selftest" == "PASSED" ]; then
+			show_smart_selftest
+		elif [ "$smart_selftest" != "" ]; then
+			show_smart_selftest
+			exit_code=1
+		fi
+	else
+		show_TOTAL_KO
+		TOTAL_KO=0
+	fi
+show_smart_exit_code
+done
+
+if [ $GOT_TOTAL_KO -eq 0 ]; then
+	set_exit
+else
+	remove_runlock
+	exit 2
+fi
+
+}
+
+get_megaraid_slots() {
+
+megaraid_slots=$($megacli_bin -PDList -aALL|grep Slot|awk -F : '{ print $2 }'|tr -d ' ')
+
+}
+
+megaraid() {
+
+if [ ! -f $megacli_bin ]; then
+	echo "No megacli binary file found"
+	remove_runlock
+	exit 3
+fi
+
+get_devices
+
+#device_count=$(echo "$disks"|wc -l)
+
+
+#if [ $device_count -gt 1 ]; then
+#	echo "More than one raid device found!"
+#	remove_runlock
+#	exit 3
+#fi
+disks="sdc"
+
+get_megaraid_slots
+
+exit_code=0
+TOTAL_KO=0
+GOT_TOTAL_KO=0
+
+for slot in $megaraid_slots; do
+	get_smartctl_values "-d megaraid,$slot -a $devices_path/$disks"
+
+	if [ $TOTAL_KO -eq 0 ]; then
+		ssd_condition=$(echo "$smartctl_values"|grep "Media_Wearout_Indicator"|awk '{ print $4 }')
+		if [ "$ssd_condition" != '' ]; then
+                	if [ $ssd_condition -le 30 ]; then
+                        	show_condition2 $slot
+				remove_runlock
+	                        exit_code=2
+        	        elif [ $ssd_condition -le 70 ]; then
+                	        show_condition2 $slot
+				if [ $exit_code -le 2 ]; then
+					remove_runlock
+	                        	exit_code=1
+				fi
+        	        else
+                	        show_condition2 $slot
+	                fi
+		fi
+                get_smart_health
+                if [ "$smart_health" == "OK" ]; then
+                        show_smart_health2
+                elif [ "$smart_health" != '' ]; then
+                        show_smart_health2
+                        exit_code=1
+                fi
+                get_smart_selftest
+                if [ "$smart_selftest" == "PASSED" ]; then
+                        show_smart_selftest2
+                elif [ "$smart_selftest" != "" ]; then
+                        show_smart_selftest2
+                        exit_code=1
+                fi
+
+	else
+		show_TOTAL_KO2
+		TOTAL_KO=0
+	fi
+show_smart_exit_code
+done
+
+if [ $GOT_TOTAL_KO -eq 0 ]; then
+	set_exit
+else
+	remove_runlock
+	exit 2
+fi
+
+}
+
+if [ -f $runlock ]; then
+	echo "Smart check still running..."
+	exit 1
+fi
+
+if [ ! -f $smartctl_bin ]; then
+	echo "No smartctl binary file found!"
+	exit 3
+fi
+
+if [ $# -ne 1 ]; then
+        help
+fi
+
+touch $runlock
+
+if [ "$1" == "noraid" ]; then
+        noraid
+elif [ "$1" == "softraid" ]; then
+	noraid
+elif [ "$1" == "megaraid" ]; then
+	megaraid
+else
+	help
+fi
+

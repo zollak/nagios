@@ -1,0 +1,50 @@
+#!/bin/bash
+
+OK=0
+WARN=1
+CRIT=2
+
+function printusage {
+	echo "usage: $0 -c minute -w minute"
+	exit 2
+}
+
+if [ $# -eq 0 ]; then
+	printusage
+fi
+
+while getopts ":hw:c:" OPTION; do
+  case "${OPTION}" in
+  	w) let "warn=$OPTARG * 60"
+           ;;
+  	c) let "crit=$OPTARG * 60"
+           ;;
+	h) printusage
+	   ;;
+  	\?) echo "Invalid option: -$OPTARG" >&2
+    	    exit 2
+    	    ;;
+	:) echo "Option -$OPTARG requires an argument." >&2
+    	   exit 2
+	   ;;
+  esac
+done
+
+if [ $warn -le $crit ]; then
+	echo "Crit value need to be less than warn!"
+	exit 1
+fi
+
+uptime=$(cat /proc/uptime |awk -F . '{print $1}')
+
+if [ $uptime -gt $warn ]; then
+	uptime
+	exit $OK
+elif [ $uptime -gt $crit ] && [ $uptime -le $warn ]; then
+	uptime
+	exit $WARN
+else
+	uptime
+	exit $CRIT
+fi
+

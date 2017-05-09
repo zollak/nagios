@@ -1,0 +1,18 @@
+* Typo fix in ro_mount check
+* Fix ro_mount exclude paths
+* Preint script handle syslog-ng cronlog redirest now
+* Raid and smart checks added in 1.4
+* ro_mount tmpfs exclude in 1.5
+* Change config syntax 1.7
+* Fix preinst script 1.8
+* Fix preinst script 1.9
+* Add ntp and ntpdate as dependency
+* Fix nsca client passwd
+* Change iowait crit and warm def param 2.2
+* Change dir of config files
+* Change rspassive script name to nagpassive
+* Add new plugins (debupdate, disk, disks, linux_raid, mem, netstat, nfs_health, rkhunter, temp)
+* Fix check_load (processor core count was wrong)
+* Rename all send_name
+* Remove memcache from app_lists
+* Add some comment to postinst 2.3

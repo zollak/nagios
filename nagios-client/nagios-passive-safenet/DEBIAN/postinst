@@ -1,0 +1,39 @@
+#!/bin/bash
+
+if [[ -e /tmp/nscalist.tmp ]]; then
+    /bin/grep disabled /tmp/nscalist.tmp | /bin/sed 's#disabled##g' | while read line; do /usr/local/sbin/n2disablecheck $line ; done
+    /bin/grep enabled /tmp/nscalist.tmp | /bin/sed 's#enabled##g' | while read line; do /usr/local/sbin/n2enablecheck $line ; done
+    /bin/rm /tmp/nscalist.tmp
+fi
+if [[ -e /tmp/nsca-cron/old ]]; then
+    olddir='/tmp/nsca-cron/old'
+    oldcronlist='/tmp/nsca-cron/oldcronlist'
+    oldcronlistshort='/tmp/nsca-cron/oldcronlistshort'
+    /bin/cat $oldcronlist | awk -F "/" '{print $4}' > $oldcronlistshort
+#    /bin/echo "The previous enabled crons has been replaced. You can find a backup in /tmp/nsca-cron/old. When you reboot the system, you'll lose them."
+# defaultcronlist contains enabled cron list from this package
+    defaultcronlist='/tmp/nsca-cron/defaultcronlist'
+    newdir='/etc/cron.d'
+    /bin/ls $newdir/passive-check-* | grep -v disabled > $defaultcronlist
+    defaultdir='/tmp/nsca-cron/default'
+    /bin/mkdir $defaultdir
+    defaultcronlistshort='/tmp/nsca-cron/defaultcronlistshort'
+    /bin/cat $defaultcronlist | awk -F "/" '{print $4}' > $defaultcronlistshort
+    while read line; 
+    do 
+	cp $newdir/$line $defaultdir;
+	# set default pattern
+	oldstring=`cat $defaultdir/$line | awk -F ";" '{print $2}' | grep -v ^$`
+	# set previous pattern 
+	if grep -q "$line" $oldcronlistshort; then
+		newstring=`cat $olddir/$line | awk -F ";" '{print $2}' | grep -v ^$`;
+	else
+		newstring=$oldstring;
+	fi
+	regexp=$(printf %s "$oldstring" | sed 's:["$*./\[^]:\\&:g')
+	replacement=$(printf %s "$newstring" | sed 's:["$*./\[^]:\\&:g')
+	export regexp replacement
+	x="$newdir/$line"
+	sed -e "s/$regexp/$replacement/g" <"$x" >"$x.new" && mv "$x.new" "$x"
+    done < $defaultcronlistshort
+fi

@@ -1,0 +1,186 @@
+#!/bin/bash
+
+#1st - list of check_procs 
+app_list="apache2 httpd sshd mysqld rsyslogd postgres pureftp memcached munin-node dovecot pure-ftpd syslog-ng nagios-api named xinetd"
+
+#2nd - list of services where param only "-H 127.0.0.1". For example: check_smtp -H 127.0.0.1
+m_list="pop spop smtp ssmtp imap simap"
+
+#3rd - list of unique function
+check_list="load zombie totalproc mailq ntp uptime iowait swap-activity ro-mounts disk postfix nagios3 nagibot"
+
+. /etc/nagios-passive/nagios-passive.conf
+
+cron_file="/etc/cron.d/nagios-pc"
+
+function print_config_line {
+	cmd=$1
+	params=$2
+	send_name="${3:-}"
+	def_cron_sched="* * * * *"
+	cat >> $cron_file << EOF
+###$cmd###
+$def_cron_sched root nagpassive $cmd '$params' $send_name
+
+EOF
+}
+
+
+function calculate_disk_params {
+	crit="1%"
+	warn="2%"
+        print_config_line "check_disk" "-l -u GB -X tmpfs -X devtmpfs -w $warn -c $crit -A" "Disk_Space"
+}
+
+function calculate_load_params {
+	load_warn_ratio=1
+	load_crit_ratio=1.5
+	cpu_cores=$(cat /proc/cpuinfo|grep ^processor|wc -l)
+	warn=$(echo "$cpu_cores * $load_warn_ratio / 1"|bc)
+	crit=$(echo "$cpu_cores * $load_crit_ratio / 1"|bc)
+	print_config_line "check_load" "-w $warn,$warn,$warn -c $crit,$crit,$crit" "Current_Load"
+}
+
+function calculate_zombie_params {
+	zombie_warn_ratio=0.1
+	zombie_crit_ratio=0.3
+	proc_count=$(ps aux|wc -l)
+	warn=$(echo "$proc_count * $zombie_warn_ratio / 1"|bc)
+	crit=$(echo "$proc_count * $zombie_crit_ratio / 1"|bc)
+	print_config_line "check_procs" "-w $warn -c $crit -s Z" "Zombie_Process"
+}
+
+function calculate_totalproc_params {
+	proc_warn_ratio=1.5
+	proc_crit_ratio=2
+	proc_count=$(ps aux|wc -l)
+	warn=$(echo "$proc_count * $proc_warn_ratio / 1"|bc)
+	crit=$(echo "$proc_count * $proc_crit_ratio / 1"|bc)
+	print_config_line "check_procs" "-w $warn -c $crit" "Running_Process"
+}
+
+function calculate_mailq_params {
+	warn=15
+	crit=30
+	print_config_line "check_mailq" "-w $warn -c $crit" "Mail_Queue"
+}
+
+function calculate_ntp_params {
+        ntp_warn=10
+        ntp_crit=20
+	command -v ntpd > /dev/null 2>&1
+	ret_val=$?
+	if [ $ret_val ]; then
+		service ntp status > /dev/null 2>&1
+		ntp_status=$?
+		if [ $ntp_status -eq 0 ]; then
+			service ntp stop > /dev/null 2>&1
+		fi
+	fi
+	ntp_host=$(ip route show|grep default|awk '{print $3}')
+	ntpdate $ntp_host > /dev/null 2>&1
+	if [ $? -ne 0 ]; then
+		ntp_host="europe.pool.ntp.org"
+	fi
+	if [ $ntp_status -eq 0 ]; then
+		service ntp start > /dev/null 2>&1
+	fi
+        print_config_line "check_ntp_time" "-H $ntp_host -w $ntp_warn -c $ntp_crit" "NTP_Time"
+}
+
+function calculate_uptime_params {
+        crit=15
+	warn=25
+        print_config_line "check_uptime" "-c $crit -w $warn" "Uptime"
+}
+
+function calculate_iowait_params {
+        crit=80
+	warn=70
+        print_config_line "check_iowait" "-c $crit -w $warn" "IOwait"
+}
+
+function calculate_swap-activity_params {
+        crit=8192
+	warn=4096
+	sample=5
+        print_config_line "check_swap_activity" "-d $sample -c $crit -w $warn" "Swap_activity"
+}
+
+function calculate_ro-mounts_params {
+        print_config_line "check_ro-mounts" "" "RO_Mounts"
+}
+
+
+function calculate_postfix_params {
+        crit_range="1:"
+	arg="postfix"
+	enable_app=$(ps aux|grep $arg|grep -v grep|wc -l)
+	if [ $enable_app -gt 0 ]; then
+	        print_config_line "check_procs" "-c $crit_range -a $arg" "Postfix_Process"
+	fi
+}
+
+function calculate_nagibot_params {
+        crit_range="1:"
+	arg="nagibot.py"
+        enable_app=$(ps aux|grep $arg|grep -v grep|wc -l)
+        if [ $enable_app -gt 0 ]; then
+	        print_config_line "check_procs" "-c $crit_range -a $arg" "Nagibot_Process"
+	fi
+}
+
+function calculate_nagios3_params {
+        crit_range="1:"
+	arg="/etc/nagios3/nagios.cfg"
+	cmd="nagios3"
+        enable_app=$(ps aux|grep $arg|grep -v grep|wc -l)
+        if [ $enable_app -gt 0 ]; then
+	        print_config_line "check_procs" "-c $crit_range -C $cmd -a $arg" "Nagios3_Process"
+	fi
+}
+
+
+function calculate_m_params {
+	host="127.0.0.1"
+	cmd=$1
+	uppercase_cmd=`echo "$1"|tr '[:lower:]' '[:upper:]'`
+	$nagios_plugins_path/check_$cmd -H $host > /dev/null 2>&1
+	if [ $? -eq 0 ]; then
+	        print_config_line "check_"$cmd "-H $host" "$uppercase_cmd"
+	fi
+}
+
+function calculate_procs_params {
+        crit_range="1:"
+	cmd=$1
+	first_letter_upper_cmd=${cmd^}
+        print_config_line "check_procs" "-c $crit_range -C $cmd" $first_letter_upper_cmd"_Process"
+}
+
+
+#Create cront file
+cat > $cron_file << EOF
+MAILTO=""
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+
+EOF
+
+
+for i in $app_list; do
+	enable_app=$(ps aux|grep $i|grep -v grep|wc -l)
+	if [ $enable_app -gt 0 ]; then
+		calculate_procs_params $i
+	fi
+done
+
+for i in $m_list; do
+	calculate_m_params $i
+done
+
+for i in $check_list; do
+	calculate_"$i"_params
+done
+
+

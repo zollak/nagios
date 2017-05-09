@@ -1,0 +1,29 @@
+#!/bin/bash
+set -e
+
+case "$1" in
+    install)
+        ;;
+
+    upgrade|abort-upgrade)
+	if [[ -e /usr/local/sbin/n2disablecheck ]]; then
+	    /usr/local/sbin/n2disablecheck list > /tmp/nscalist.tmp
+	fi
+	if [[ -e /tmp/nsca-cron ]]; then
+	    /bin/rm -rf /tmp/nsca-cron
+	fi
+	/bin/mkdir -p /tmp/nsca-cron/old
+	oldcronlist='/tmp/nsca-cron/oldcronlist'
+	/bin/ls /etc/cron.d/passive-check-* | grep -v disabled > $oldcronlist
+	# backup only enabled crons to /tmp/nsca-cron/old
+	while read line; do cp $line /tmp/nsca-cron/old;done < $oldcronlist
+	;;
+    *)
+        echo "preinst called with unknown argument \`$1'" >&2
+        exit 0
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0
