@@ -145,3 +145,14 @@ $ dpkg-deb --build nagios-passive-check/ nagios-passive-check_2.4_all.deb
 ###check_swap_activity###
 * * * * * root nagpassive check_swap_activity '-d 5 -c 1536 -w 1024' Swap_activity
 ```
+
+## List nagios packages after install passive check
+
+```
+# dpkg -l | grep nagios
+ii  nagios-passive-check            2.3                                 all          Passive checks solution for SafeNet IT
+ii  nagios-plugins                  1.5-3ubuntu1                        all          Plugins for nagios compatible monitoring sy                          stems (metapackage)
+ii  nagios-plugins-basic            1.5-3ubuntu1                        amd64        Plugins for nagios compatible monitoring sy                          stems
+ii  nagios-plugins-common           1.5-3ubuntu1                        amd64        Common files for plugins for nagios compati                          ble monitoring
+ii  nagios-plugins-standard         1.5-3ubuntu1                        amd64        Plugins for nagios compatible monitoring sy                          stems
+```
