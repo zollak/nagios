@@ -151,8 +151,8 @@ $ dpkg-deb --build nagios-passive-check/ nagios-passive-check_2.4_all.deb
 ```
 # dpkg -l | grep nagios
 ii  nagios-passive-check            2.3                                 all          Passive checks solution for SafeNet IT
-ii  nagios-plugins                  1.5-3ubuntu1                        all          Plugins for nagios compatible monitoring sy                          stems (metapackage)
-ii  nagios-plugins-basic            1.5-3ubuntu1                        amd64        Plugins for nagios compatible monitoring sy                          stems
-ii  nagios-plugins-common           1.5-3ubuntu1                        amd64        Common files for plugins for nagios compati                          ble monitoring
-ii  nagios-plugins-standard         1.5-3ubuntu1                        amd64        Plugins for nagios compatible monitoring sy                          stems
+ii  nagios-plugins                  1.5-3ubuntu1                        all          Plugins for nagios compatible monitoring systems (metapackage)
+ii  nagios-plugins-basic            1.5-3ubuntu1                        amd64        Plugins for nagios compatible monitoring systems
+ii  nagios-plugins-common           1.5-3ubuntu1                        amd64        Common files for plugins for nagios compatible monitoring
+ii  nagios-plugins-standard         1.5-3ubuntu1                        amd64        Plugins for nagios compatible monitoring systems
 ```
